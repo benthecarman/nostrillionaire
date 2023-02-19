@@ -20,6 +20,9 @@ case class RoundDb(
     profit: Option[CurrencyUnit],
     winner: Option[SchnorrPublicKey])
     extends DbRowAutoInc[RoundDb] {
+  require(startDate <= endDate, "Start date must be before end date")
+  require(number > 0, "Round number must be greater than 0")
+
   override def copyWithId(id: Long): RoundDb = this.copy(id = Some(id))
 }
 
