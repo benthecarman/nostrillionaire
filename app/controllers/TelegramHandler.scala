@@ -36,6 +36,7 @@ class TelegramHandler(controller: Controller)(implicit
 
   val roundDAO: RoundDAO = RoundDAO()
   val zapDAO: ZapDAO = ZapDAO()
+  val payoutDAO: PayoutDAO = PayoutDAO()
 
   private val myTelegramId = config.telegramId
   private val telegramCreds = config.telegramCreds
@@ -50,6 +51,7 @@ class TelegramHandler(controller: Controller)(implicit
     val commands = List(
       BotCommand("report", "Generate report of all events"),
       BotCommand("current", "Get info on the current round"),
+      BotCommand("payouts", "Get info historical payouts"),
       BotCommand("processunhandled", "Forces processing of invoices")
     )
 
@@ -82,6 +84,16 @@ class TelegramHandler(controller: Controller)(implicit
   onCommand("current") { implicit msg =>
     if (checkAdminMessage(msg)) {
       currentRound().flatMap { report =>
+        reply(report).map(_ => ())
+      }
+    } else {
+      reply("You are not allowed to use this command!").map(_ => ())
+    }
+  }
+
+  onCommand("payouts") { implicit msg =>
+    if (checkAdminMessage(msg)) {
+      getPayouts().flatMap { report =>
         reply(report).map(_ => ())
       }
     } else {
@@ -217,6 +229,20 @@ class TelegramHandler(controller: Controller)(implicit
            |Num Zaps: ${intFormatter.format(numZaps)}
            |Total Zapped: ${printAmount(totalZapped)}
            |""".stripMargin
+    }
+  }
+
+  private def getPayouts(): Future[String] = {
+    payoutDAO.findAll().map { payouts =>
+      val count = payouts.size
+      val total = payouts.map(_.amount).sum
+      val feesPaid = payouts.map(_.fee).sum
+
+      s"""
+         |Total Payouts: ${intFormatter.format(count)}
+         |Total Amount: ${printAmount(total)}
+         |Total Fees Paid: ${printAmount(feesPaid)}
+         |""".stripMargin
     }
   }
 

@@ -4,7 +4,6 @@ import config.NostrillionaireAppConfig
 import org.bitcoins.core.currency._
 import org.bitcoins.core.protocol.ln.LnInvoice
 import org.bitcoins.db.{CRUD, DbCommonsColumnMappers, SlickUtil}
-import scodec.bits.ByteVector
 import slick.lifted.ProvenShape
 
 import scala.concurrent.{ExecutionContext, Future}
