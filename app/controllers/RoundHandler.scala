@@ -187,7 +187,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
                 val paymentAmount = roundDb.prize.get
                 val f = for {
                   invoice <- lnurlClient.getInvoice(pay, paymentAmount)
-                  payment <- lnd.sendPayment(invoice, 1.minute)
+                  payment <- lnd.sendPayment(invoice, 20.seconds)
 
                   payoutDbOpt <- {
                     if (payment.failureReason.isFailureReasonNone) {
