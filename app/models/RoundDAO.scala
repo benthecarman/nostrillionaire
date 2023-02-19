@@ -50,6 +50,16 @@ case class RoundDAO()(implicit
     safeDatabase.run(findCurrentAction())
   }
 
+  def getCurrentRoundId(): Future[Long] = {
+    val action = table
+      .filter(_.profit.isEmpty)
+      .sortBy(_.endDate.desc)
+      .map(_.id)
+      .result.map(_.head)
+
+    safeDatabase.run(action)
+  }
+
   def getCompleted(): Future[Seq[RoundDb]] = {
     val action = table
       .filter(_.profit.isDefined)

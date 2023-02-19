@@ -139,9 +139,10 @@ class Controller @Inject() (cc: MessagesControllerComponents)
 
               for {
                 invoice <- lnd.addInvoice(hash, amount, 360)
+                roundId <- roundDAO.getCurrentRoundId()
                 db = ZapDb(
                   rHash = invoice.rHash.hash,
-                  round = 1, // todo
+                  round = roundId,
                   invoice = invoice.invoice,
                   payer = event.pubkey,
                   amount = amount,
