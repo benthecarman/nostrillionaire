@@ -75,7 +75,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     } yield created
   }
 
-  private def completeRound(): Future[RoundDb] = {
+  private def completeRound(): Future[Unit] = {
     val readAction = roundDAO.findCurrentAction().flatMap {
       case Some(round) =>
         zapDAO.findPaidByRoundAction(round.id.get).map(zaps => (round, zaps))
@@ -84,61 +84,70 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
         DBIOAction.failed(new RuntimeException("Could not find current round"))
     }
 
-    roundDAO.safeDatabase.run(readAction).flatMap { case (roundDb, zaps) =>
-      val totalZapped = zaps.map(_.amount.toLong).sum
-      val totalZappedSats = MilliSatoshis(totalZapped).toSatoshis
-      val numZaps = zaps.size
+    val f =
+      roundDAO.safeDatabase.run(readAction).flatMap { case (roundDb, zaps) =>
+        val totalZapped = zaps.map(_.amount.toLong).sum
+        val totalZappedSats = MilliSatoshis(totalZapped).toSatoshis
+        val numZaps = zaps.size
 
-      val winnerOpt = RoundHandler.calculateWinner(zaps, roundDb.number)
+        val winnerOpt = RoundHandler.calculateWinner(zaps, roundDb.number)
 
-      winnerOpt match {
-        case Some(winner) =>
-          val prize = totalZappedSats.toLong * 0.9
-          val prizeSats = Satoshis(prize.toLong)
-          val profit = totalZappedSats - prizeSats
+        winnerOpt match {
+          case Some(winner) =>
+            val prize = totalZappedSats.toLong * 0.9
+            val prizeSats = Satoshis(prize.toLong)
+            val profit = totalZappedSats - prizeSats
 
-          val updatedRound = roundDb.copy(
-            numZaps = Some(numZaps),
-            totalZapped = Some(totalZappedSats),
-            prize = Some(prizeSats),
-            profit = Some(profit),
-            winner = Some(winner.payer)
-          )
+            val updatedRound = roundDb.copy(
+              numZaps = Some(numZaps),
+              totalZapped = Some(totalZappedSats),
+              prize = Some(prizeSats),
+              profit = Some(profit),
+              winner = Some(winner.payer)
+            )
 
-          val announceF = announceWinner(updatedRound, winner.satoshis)
+            val announceF = announceWinner(updatedRound, winner.satoshis)
 
-          val telegramF = telegramHandlerOpt
-            .map(_.notifyRoundComplete(updatedRound, Some(winner.satoshis)))
-            .getOrElse(Future.unit)
+            val telegramF = telegramHandlerOpt
+              .map(_.notifyRoundComplete(updatedRound, Some(winner.satoshis)))
+              .getOrElse(Future.unit)
 
-          for {
-            _ <- roundDAO.update(updatedRound)
-            _ <- payWinner(updatedRound).recover(_ => ())
-            _ <- announceF
-            _ <- telegramF
-          } yield updatedRound
-        case None =>
-          val updatedRound = roundDb.copy(
-            numZaps = Some(numZaps),
-            totalZapped = Some(totalZappedSats),
-            prize = Some(Satoshis.zero),
-            profit = Some(totalZappedSats),
-            winner = None
-          )
+            for {
+              _ <- roundDAO.update(updatedRound)
+              _ = logger.info(s"Round saved to database")
+              _ <- payWinner(updatedRound)
+                .map(_ => logger.info(s"Winner paid: $winner"))
+                .recover(_ => ())
+              _ <- announceF
+              _ <- telegramF
+            } yield logger.info(s"Completed round: $updatedRound")
+          case None =>
+            val updatedRound = roundDb.copy(
+              numZaps = Some(numZaps),
+              totalZapped = Some(totalZappedSats),
+              prize = Some(Satoshis.zero),
+              profit = Some(totalZappedSats),
+              winner = None
+            )
 
-          val announceF = announceNoWinner(updatedRound)
+            val announceF = announceNoWinner(updatedRound)
 
-          val telegramF = telegramHandlerOpt
-            .map(_.notifyRoundComplete(updatedRound, None))
-            .getOrElse(Future.unit)
+            val telegramF = telegramHandlerOpt
+              .map(_.notifyRoundComplete(updatedRound, None))
+              .getOrElse(Future.unit)
 
-          for {
-            _ <- roundDAO.update(updatedRound)
-            _ <- announceF
-            _ <- telegramF
-          } yield updatedRound
+            for {
+              _ <- roundDAO.update(updatedRound)
+              _ = logger.info(s"Round saved to database")
+              _ <- announceF
+              _ <- telegramF
+            } yield logger.info(s"Completed round: $updatedRound")
+        }
       }
-    }
+
+    f.failed.foreach(ex => logger.error("Failure completing round", ex))
+
+    f
   }
 
   private def warnPaymentFailure(
