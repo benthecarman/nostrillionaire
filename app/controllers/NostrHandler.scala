@@ -214,24 +214,26 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
     val metadata: mutable.Buffer[NostrEvent] = mutable.Buffer.empty[NostrEvent]
 
     val clients: Vector[NostrClient] = {
-      config.nostrRelays.map { relay =>
-        new NostrClient(relay, None) {
+      config.nostrRelays.filter(_ != "wss://nostr.mutinywallet.com").map {
+        relay =>
+          new NostrClient(relay, None) {
 
-          override def processEvent(
-              subscriptionId: String,
-              event: NostrEvent): Future[Unit] = {
-            if (
-              event.kind == NostrKind.Metadata &&
-              event.pubkey == nostrPublicKey.key
-            ) {
-              metadata += event
+            override def processEvent(
+                subscriptionId: String,
+                event: NostrEvent): Future[Unit] = {
+              if (
+                event.kind == NostrKind.Metadata &&
+                event.pubkey == nostrPublicKey.key
+              ) {
+                metadata += event
+              }
+
+              Future.unit
             }
 
-            Future.unit
+            override def processNotice(notice: String): Future[Unit] =
+              Future.unit
           }
-
-          override def processNotice(notice: String): Future[Unit] = Future.unit
-        }
       }
     }
 
