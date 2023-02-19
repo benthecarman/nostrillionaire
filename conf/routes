@@ -3,6 +3,8 @@
 # ~~~~
 
 # Home page
+GET         /                                controllers.Controller.index
+
 GET         /lnurlp/:meta                    controllers.Controller.lnurlPay(meta)
 GET         /.well-known/lnurlp/*user        controllers.Controller.getLnurlPay(user)
 GET         /.well-known/nostr.json          controllers.Controller.nip5()

@@ -64,6 +64,12 @@ class Controller @Inject() (cc: MessagesControllerComponents)
     }
   }
 
+  def index: Action[AnyContent] = {
+    Action { implicit request: MessagesRequest[AnyContent] =>
+      Ok(views.html.index())
+    }
+  }
+
   private val defaultNip5: JsObject = Json.obj(
     "names" -> Json.obj(
       "_" -> invoiceMonitor.nostrPubKey.hex,
