@@ -218,6 +218,8 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
         relay =>
           new NostrClient(relay, None) {
 
+            override def unsubOnEOSE: Boolean = true
+
             override def processEvent(
                 subscriptionId: String,
                 event: NostrEvent): Future[Unit] = {
