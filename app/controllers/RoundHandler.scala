@@ -25,7 +25,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
   def startRoundScheduler(): Unit = {
     logger.info("Starting round scheduler")
-    val _ = system.scheduler.scheduleWithFixedDelay(1.minute, 1.minute) { () =>
+    val _ = system.scheduler.scheduleWithFixedDelay(5.seconds, 1.minute) { () =>
       for {
         current <- roundDAO.findCurrent()
         _ <- current match {
