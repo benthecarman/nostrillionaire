@@ -20,7 +20,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
   private val lnurlClient = new LnURLClient(None)
 
-  final private val MIN = 100
+  final private val MIN = 1
   final private val MAX = 1_000_000
 
   def startRoundScheduler(): Unit = {
