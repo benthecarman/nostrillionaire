@@ -167,7 +167,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     require(roundDb.winner.isDefined, "Cannot pay winner if there is no winner")
     val winner = NostrPublicKey(roundDb.winner.get)
 
-    getMetadata(winner).flatMap {
+    getMetadata(winner).recover(_ => None).flatMap {
       case None =>
         warnPaymentFailure(roundDb, s"Could not find metadata for $winner")
       case Some(metadata) =>
@@ -191,15 +191,14 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
                   payoutDbOpt <- {
                     if (payment.failureReason.isFailureReasonNone) {
-                      Future.successful(
-                        Some(PayoutDb(
-                          round = roundDb.id.get,
-                          invoice = invoice,
-                          amount = paymentAmount,
-                          fee = Satoshis(payment.feeSat),
-                          preimage = payment.paymentPreimage,
-                          date = TimeUtil.currentEpochSecond
-                        )))
+                      Future.successful(Some(PayoutDb(
+                        round = roundDb.id.get,
+                        invoice = invoice,
+                        amount = paymentAmount,
+                        fee = Satoshis(payment.feeSat),
+                        preimage = payment.paymentPreimage,
+                        date = TimeUtil.currentEpochSecond
+                      )))
                     } else {
                       warnPaymentFailure(
                         roundDb,
