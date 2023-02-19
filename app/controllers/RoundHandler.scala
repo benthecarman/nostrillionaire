@@ -227,7 +227,7 @@ object RoundHandler {
 
   def calculateWinner(zaps: Vector[ZapDb], number: Long): Option[ZapDb] = {
     zaps
-      .filter(_.satoshis > Satoshis(number))
+      .filterNot(_.satoshis > Satoshis(number))
       .maxByOption(_.satoshis)
   }
 }
