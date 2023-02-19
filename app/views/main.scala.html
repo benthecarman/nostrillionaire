@@ -1,0 +1,47 @@
+@(title: String)(content: Html)
+
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <title>@title</title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
+        <link href="@{
+            "https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css"
+        }" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+        <link rel="shortcut icon" type="image/ico" href="@routes.Assets.versioned("images/favicon.ico")">
+        <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/dark.min.css")" />
+        <script src="https://kit.fontawesome.com/6c99a521b7.js" crossorigin="anonymous"></script>
+
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:site" content="@{"@benthecarman"}" />
+        <meta name="twitter:creator" content="@{"@benthecarman"}" />
+        <meta name="twitter:image" content="https://nostrillionaire.com/assets/images/logo.jpeg" />
+        <meta property="og:url" content="https://nostrillionaire.com" />
+        <meta property="og:title" content="Nostrillionaire" />
+        <meta property="og:description" content="Winning prizes by zapping" />
+        <meta property="og:image" content="https://nostrillionaire.com/assets/images/logo.jpeg" />
+    </head>
+    <body>
+        <nav class="navbar navbar-expand-lg navbar-light bg-dark">
+            <a class="navbar-brand pointer" href="#" style="padding: 4px;
+                margin: 0;">
+            <img src = " @routes.Assets.versioned("images/logo.jpeg") "
+                style="height: 50px;
+                width: 50px;" title="logo" alt="Nostrillionaire"/>
+            <label class="nav-item" style="color: white;
+                cursor: pointer;">Nostrillionaire</label>
+            </a>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+@*                    <li class="nav-item active">*@
+@*                        <a class="nav-link" href="@routes.Controller.index()">Name</a>*@
+@*                    </li>*@
+                </ul>
+            </div>
+        </nav>
+        <div class="container">
+        @content
+        </div>
+    </body>
+</html>
