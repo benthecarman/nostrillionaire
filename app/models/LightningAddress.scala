@@ -13,7 +13,8 @@ case class LightningAddress(value: String) {
           s"'$invalid' is not a valid lightning address")
     }
 
-  lazy val lnurlp: URL = new URL(s"https://$domain/.well-known/lnurlp/$mailbox")
+  lazy val lnurlp: URL = new URL(
+    s"https://${domain.value}/.well-known/lnurlp/${mailbox.value}")
 
   override def equals(lnAddr: Any): Boolean = {
     lnAddr match {
