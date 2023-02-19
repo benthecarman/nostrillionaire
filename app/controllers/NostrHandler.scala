@@ -74,10 +74,10 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
       max: Satoshis): Future[Option[Sha256Digest]] = {
     val content =
       s"""
-         |A new round has started!
+         |Guess today's random number and win a prize!
          |
          |Zap this note between ${printAmount(min)} and ${printAmount(
-          max)} for a chance to win!
+          max)} with your guess for a chance to win!
          |
          |The closest guess without going over wins!
          |""".stripMargin.trim
