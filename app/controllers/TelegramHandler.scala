@@ -14,6 +14,7 @@ import models._
 import org.bitcoins.core.currency._
 import org.bitcoins.core.util.StartStopAsync
 import org.scalastr.core.NostrPublicKey
+import slick.dbio.DBIOAction
 import sttp.capabilities.akka.AkkaStreams
 import sttp.client3.SttpBackend
 import sttp.client3.akkahttp.AkkaHttpBackend
@@ -48,6 +49,7 @@ class TelegramHandler(controller: Controller)(implicit
   override def start(): Future[Unit] = {
     val commands = List(
       BotCommand("report", "Generate report of all events"),
+      BotCommand("current", "Get info on the current round"),
       BotCommand("processunhandled", "Forces processing of invoices")
     )
 
@@ -70,6 +72,16 @@ class TelegramHandler(controller: Controller)(implicit
   onCommand("report") { implicit msg =>
     if (checkAdminMessage(msg)) {
       createReport().flatMap { report =>
+        reply(report).map(_ => ())
+      }
+    } else {
+      reply("You are not allowed to use this command!").map(_ => ())
+    }
+  }
+
+  onCommand("current") { implicit msg =>
+    if (checkAdminMessage(msg)) {
+      currentRound().flatMap { report =>
         reply(report).map(_ => ())
       }
     } else {
@@ -176,6 +188,35 @@ class TelegramHandler(controller: Controller)(implicit
          |Total Zapped: ${printAmount(totalZapped)}
          |Total profit: ${printAmount(profit)}
          |""".stripMargin
+    }
+  }
+
+  private def currentRound(): Future[String] = {
+    val action = roundDAO.findCurrentAction().flatMap {
+      case None => DBIOAction.successful(None)
+      case Some(round) =>
+        zapDAO.findPaidByRoundAction(round.id.get).map(z => Some((round, z)))
+    }
+
+    roundDAO.safeDatabase.run(action).map {
+      case None => "Error: No current round!"
+      case Some((round, zaps)) =>
+        val totalZapped = zaps.map(_.satoshis.asInstanceOf[CurrencyUnit]).sum
+        val numZaps = zaps.size
+
+        val expectedWinner =
+          RoundHandler.calculateWinner(zaps, round.number).map(_.payer)
+
+        s"""
+           |Current Round: ${round.id.get}
+           |Winning Number: ${round.number}
+           |Expected Winner: ${expectedWinner
+            .map(NostrPublicKey(_).toString)
+            .getOrElse("None")}
+           |
+           |Num Zaps: ${intFormatter.format(numZaps)}
+           |Total Zapped: ${printAmount(totalZapped)}
+           |""".stripMargin
     }
   }
 

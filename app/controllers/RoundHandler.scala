@@ -24,6 +24,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
   final private val MAX = 1_000_000
 
   def startRoundScheduler(): Unit = {
+    logger.info("Starting round scheduler")
     val _ = system.scheduler.scheduleWithFixedDelay(1.minute, 1.minute) { () =>
       for {
         current <- roundDAO.findCurrent()
@@ -67,6 +68,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     for {
       created <- roundDAO.create(round)
       _ <- announceNewRound(Satoshis(MIN), Satoshis(MAX))
+      _ = logger.info(s"Created new round: $created")
     } yield created
   }
 
@@ -84,9 +86,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       val totalZappedSats = MilliSatoshis(totalZapped).toSatoshis
       val numZaps = zaps.size
 
-      val winnerOpt = zaps
-        .filter(_.satoshis > Satoshis(roundDb.number))
-        .maxByOption(_.satoshis)
+      val winnerOpt = RoundHandler.calculateWinner(zaps, roundDb.number)
 
       winnerOpt match {
         case Some(winner) =>
@@ -220,5 +220,14 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
             warnPaymentFailure(roundDb, s"Could not find LNURL for $winner")
         }
     }
+  }
+}
+
+object RoundHandler {
+
+  def calculateWinner(zaps: Vector[ZapDb], number: Long): Option[ZapDb] = {
+    zaps
+      .filter(_.satoshis > Satoshis(number))
+      .maxByOption(_.satoshis)
   }
 }
