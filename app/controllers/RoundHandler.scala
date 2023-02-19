@@ -118,7 +118,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
             _ = logger.info(s"Round saved to database")
             _ <- payWinner(updatedRound)
               .map(_ => logger.info(s"Winner paid: $winner"))
-              .recover(_ => ())
+              .recover(ex => logger.error(s"Could not pay winner: $winner", ex))
             _ <- announceF
             _ <- telegramF
           } yield logger.info(s"Completed round: $updatedRound")
