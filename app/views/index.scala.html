@@ -1,9 +1,14 @@
-@()(implicit request: MessagesRequestHeader)
+@import org.scalastr.core.NostrPublicKey
+
+@(npub: NostrPublicKey)(implicit request: MessagesRequestHeader)
 
 @main("Nostrillionaire") {
 
     <h2>Nostrillionaire</h2>
     <p>
         A nostr game.
+    </p>
+    <p>
+    @npub
     </p>
 }

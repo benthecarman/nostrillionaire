@@ -12,7 +12,7 @@ import org.bitcoins.core.util.TimeUtil
 import org.bitcoins.crypto._
 import org.bitcoins.lnd.rpc.LndRpcClient
 import org.bitcoins.lnurl.json.LnURLJsonModels._
-import org.scalastr.core.NostrEvent
+import org.scalastr.core.{NostrEvent, NostrPublicKey}
 import play.api.libs.json._
 import play.api.mvc._
 import scodec.bits.ByteVector
@@ -66,7 +66,7 @@ class Controller @Inject() (cc: MessagesControllerComponents)
 
   def index: Action[AnyContent] = {
     Action { implicit request: MessagesRequest[AnyContent] =>
-      Ok(views.html.index())
+      Ok(views.html.index(NostrPublicKey(invoiceMonitor.nostrPubKey)))
     }
   }
 
