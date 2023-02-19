@@ -55,7 +55,8 @@ case class RoundDAO()(implicit
       .filter(_.profit.isEmpty)
       .sortBy(_.endDate.desc)
       .map(_.id)
-      .result.map(_.head)
+      .result
+      .map(_.head)
 
     safeDatabase.run(action)
   }

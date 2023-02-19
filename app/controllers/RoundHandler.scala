@@ -113,7 +113,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
           for {
             _ <- roundDAO.update(updatedRound)
-            _ <- payWinner(updatedRound)
+            _ <- payWinner(updatedRound).recover(_ => ())
             _ <- announceF
             _ <- telegramF
           } yield updatedRound
@@ -156,6 +156,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
     for {
       _ <- sendFailedPaymentDM(winner)
+        .map(_ => ())
+        .recover(ex =>
+          logger.error(s"Could not send payment failure DM to $winner", ex))
       _ <- telegramF
     } yield logger.error(reason)
   }
