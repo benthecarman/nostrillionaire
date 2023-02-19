@@ -68,6 +68,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     for {
       created <- roundDAO.create(round)
       _ <- announceNewRound(Satoshis(MIN), Satoshis(MAX))
+      _ <- telegramHandlerOpt
+        .map(_.sendTelegramMessage(s"New round created!"))
+        .getOrElse(Future.unit)
       _ = logger.info(s"Created new round: $created")
     } yield created
   }
