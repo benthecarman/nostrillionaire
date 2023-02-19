@@ -127,7 +127,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
     require(roundDb.profit.isDefined, "Round must have a completed to announce")
     val content =
       s"""
-         |The winning number for today was ${roundDb.number}!
+         |The winning number for today was ${intFormatter.format(roundDb.number)}!
          |
          |Unfortunately, everyone lost their zaps.
          |

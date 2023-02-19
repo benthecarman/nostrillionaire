@@ -120,7 +120,7 @@ class TelegramHandler(controller: Controller)(implicit
       s"""
          |🔔 🔔 Round Completed! 🔔 🔔
          |
-         |Winning Number: ${roundDb.number}
+         |Winning Number: ${intFormatter.format(roundDb.number)}
          |Winner: ${roundDb.winner
           .map(NostrPublicKey(_).toString)
           .getOrElse("None")}
@@ -209,7 +209,7 @@ class TelegramHandler(controller: Controller)(implicit
 
         s"""
            |Current Round: ${round.id.get}
-           |Winning Number: ${round.number}
+           |Winning Number: ${intFormatter.format(round.number)}
            |Expected Winner: ${expectedWinner
             .map(NostrPublicKey(_).toString)
             .getOrElse("None")}
