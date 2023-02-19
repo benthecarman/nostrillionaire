@@ -4,6 +4,7 @@
 
 # Home page
 GET         /                                controllers.Controller.index
+GET         /metadata/:npub                  controllers.Controller.metadata(npub)
 
 GET         /lnurlp/:meta                    controllers.Controller.lnurlPay(meta)
 GET         /.well-known/lnurlp/*user        controllers.Controller.getLnurlPay(user)

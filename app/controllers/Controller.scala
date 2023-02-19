@@ -70,6 +70,32 @@ class Controller @Inject() (cc: MessagesControllerComponents)
     }
   }
 
+  def metadata(str: String): Action[AnyContent] = {
+    Action.async { implicit request: MessagesRequest[AnyContent] =>
+      val npub = NostrPublicKey.fromString(str)
+      val jsonF = invoiceMonitor
+        .getMetadata(npub)
+        .recover { ex: Throwable =>
+          logger.info(s"Failed to get metadata for $npub", ex)
+          None
+        }
+        .map {
+          case Some(meta) => Json.toJson(meta)
+          case None       => JsNull
+        }
+
+      jsonF.map { json =>
+        Ok(json)
+          .withHeaders(
+            "Access-Control-Allow-Origin" -> "*",
+            "Access-Control-Allow-Methods" -> "OPTIONS, GET, POST, PUT, DELETE, HEAD",
+            "Access-Control-Allow-Headers" -> "Accept, Content-Type, Origin, X-Json, X-Prototype-Version, X-Requested-With",
+            "Access-Control-Allow-Credentials" -> "true"
+          )
+      }
+    }
+  }
+
   private val defaultNip5: JsObject = Json.obj(
     "names" -> Json.obj(
       "_" -> invoiceMonitor.nostrPubKey.hex,
