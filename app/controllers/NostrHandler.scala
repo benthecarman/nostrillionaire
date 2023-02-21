@@ -71,7 +71,14 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
 
   protected def announceNewRound(
       min: Satoshis,
-      max: Satoshis): Future[Option[Sha256Digest]] = {
+      max: Satoshis,
+      carryOver: Option[CurrencyUnit]): Future[Option[Sha256Digest]] = {
+    val carryOverStr = carryOver match {
+      case Some(c) =>
+        s"\nAvailable Prize pool from previous rounds: ${printAmount(c)}\n"
+      case None => ""
+    }
+
     val content =
       s"""
          |A new round has started!
@@ -82,7 +89,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
           max)} with your guess for a chance to win!
          |
          |The closest guess without going over wins!
-         |
+         |$carryOverStr
          |Ends in 1 hour.
          |""".stripMargin.trim
 
@@ -128,13 +135,17 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
   }
 
   protected def announceNoWinner(
-      roundDb: RoundDb): Future[Option[Sha256Digest]] = {
+      roundDb: RoundDb,
+      carryOver: CurrencyUnit): Future[Option[Sha256Digest]] = {
     require(roundDb.profit.isDefined, "Round must have a completed to announce")
     val content =
       s"""
          |The winning number was ${intFormatter.format(roundDb.number)}!
          |
-         |Unfortunately, everyone lost their zaps.
+         |Unfortunately, no one guessed correctly.
+         |
+         |The prize pool of ${printAmount(
+          carryOver)} has been added to the next round!
          |
          |Better luck next time!
          |""".stripMargin.trim

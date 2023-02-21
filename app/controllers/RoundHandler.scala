@@ -8,7 +8,6 @@ import org.bitcoins.core.util.TimeUtil
 import org.bitcoins.lnurl.json.LnURLJsonModels._
 import org.bitcoins.lnurl.{LnURL, LnURLClient}
 import org.scalastr.core.NostrPublicKey
-import slick.dbio.DBIOAction
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -32,14 +31,12 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
           case Some(round) =>
             if (round.endDate < TimeUtil.currentEpochSecond) {
               logger.info("Completing round")
-              completeRound()
+              completeRound(round).flatMap(createNewRound)
             } else {
               logger.debug("Round is still active")
               Future.unit
             }
-          case None =>
-            logger.info("Creating new round")
-            createNewRound()
+          case None => createNewRound(None)
         }
       } yield ()
 
@@ -49,7 +46,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     }
   }
 
-  private def createNewRound(): Future[RoundDb] = {
+  private def createNewRound(
+      carryOver: Option[CurrencyUnit]): Future[RoundDb] = {
+    logger.info("Creating new round")
     val now = TimeUtil.currentEpochSecond
     val end = now + (60 * 60) // 1 hour
 
@@ -60,6 +59,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       number = number,
       startDate = now,
       endDate = end,
+      carryOver = carryOver,
       noteId = None,
       numZaps = None,
       totalZapped = None,
@@ -70,7 +70,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
     for {
       created <- roundDAO.create(round)
-      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX))
+      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX), carryOver)
       updated <- roundDAO.update(created.copy(noteId = noteId))
 
       _ <- telegramHandlerOpt
@@ -80,27 +80,22 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
     } yield updated
   }
 
-  private def completeRound(): Future[Unit] = {
-    val readAction = roundDAO.findCurrentAction().flatMap {
-      case Some(round) =>
-        zapDAO.findPaidByRoundAction(round.id.get).map(zaps => (round, zaps))
-      case None =>
-        logger.warn("Could not find current round to complete")
-        DBIOAction.failed(new RuntimeException("Could not find current round"))
-    }
-
-    roundDAO.safeDatabase.run(readAction).flatMap { case (roundDb, zaps) =>
+  private def completeRound(roundDb: RoundDb): Future[Option[CurrencyUnit]] = {
+    zapDAO.findPaidByRound(roundDb.id.get).flatMap { zaps =>
       val totalZapped = zaps.map(_.amount.toLong).sum
       val totalZappedSats = MilliSatoshis(totalZapped).toSatoshis
       val numZaps = zaps.size
+
+      val prizePool =
+        roundDb.carryOver.getOrElse(Satoshis.zero) + totalZappedSats
 
       val winnerOpt = RoundHandler.calculateWinner(zaps, roundDb.number)
 
       winnerOpt match {
         case Some(winner) =>
-          val prize = totalZappedSats.toLong * 0.9
+          val prize = prizePool.satoshis.toLong * 0.9
           val prizeSats = Satoshis(prize.toLong)
-          val profit = totalZappedSats - prizeSats
+          val profit = prizePool - prizeSats
 
           val updatedRound = roundDb.copy(
             numZaps = Some(numZaps),
@@ -124,17 +119,18 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
               .recover(ex => logger.error(s"Could not pay winner: $winner", ex))
             _ <- announceF
             _ <- telegramF
-          } yield logger.info(s"Completed round: $updatedRound")
+            _ = logger.info(s"Completed round: $updatedRound")
+          } yield None
         case None =>
           val updatedRound = roundDb.copy(
             numZaps = Some(numZaps),
             totalZapped = Some(totalZappedSats),
             prize = Some(Satoshis.zero),
-            profit = Some(totalZappedSats),
+            profit = Some(Satoshis.zero),
             winner = None
           )
 
-          val announceF = announceNoWinner(updatedRound)
+          val announceF = announceNoWinner(updatedRound, prizePool)
 
           val telegramF = telegramHandlerOpt
             .map(_.notifyRoundComplete(updatedRound, None))
@@ -145,7 +141,8 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
             _ = logger.info(s"Round saved to database")
             _ <- announceF
             _ <- telegramF
-          } yield logger.info(s"Completed round: $updatedRound")
+            _ = logger.info(s"Completed round: $updatedRound")
+          } yield Some(prizePool)
       }
     }
   }

@@ -51,14 +51,6 @@ case class ZapDAO()(implicit
       ts: Vector[ZapDb]): Query[ZabTable, ZapDb, Seq] =
     findByPrimaryKeys(ts.map(_.rHash))
 
-  def totalZappedAction(): DBIOAction[Satoshis, NoStream, Effect.Read] = {
-    table
-      .map(_.amount)
-      .sum
-      .result
-      .map(_.map(_.toSatoshis).getOrElse(Satoshis.zero))
-  }
-
   def findPaidByRoundAction(
       round: Long): DBIOAction[Vector[ZapDb], NoStream, Effect.Read] = {
     table
@@ -66,6 +58,10 @@ case class ZapDAO()(implicit
       .filter(_.noteIdOpt.isDefined)
       .result
       .map(_.toVector)
+  }
+
+  def findPaidByRound(round: Long): Future[Vector[ZapDb]] = {
+    safeDatabase.run(findPaidByRoundAction(round))
   }
 
   def findUnpaid(): Future[Vector[ZapDb]] = {

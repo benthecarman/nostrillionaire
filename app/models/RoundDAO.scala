@@ -14,6 +14,7 @@ case class RoundDb(
     number: Long,
     startDate: Long,
     endDate: Long,
+    carryOver: Option[CurrencyUnit],
     noteId: Option[Sha256Digest],
     numZaps: Option[Int],
     totalZapped: Option[CurrencyUnit],
@@ -83,6 +84,8 @@ case class RoundDAO()(implicit
 
     def endDate: Rep[Long] = column("end_date")
 
+    def carryOver: Rep[Option[CurrencyUnit]] = column("carry_over")
+
     def noteId: Rep[Option[Sha256Digest]] = column("note_id")
 
     def numZaps: Rep[Option[Int]] = column("num_zaps")
@@ -100,6 +103,7 @@ case class RoundDAO()(implicit
        number,
        startDate,
        endDate,
+       carryOver,
        noteId,
        numZaps,
        totalZapped,
