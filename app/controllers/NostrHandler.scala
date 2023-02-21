@@ -104,6 +104,37 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
     sendNostrEvents(Vector(event), config.nostrRelays).map(_.headOption)
   }
 
+  protected def fiveMinuteWarning(
+      roundDb: RoundDb,
+      amountPaid: Satoshis): Future[Option[NostrNoteId]] = {
+    require(roundDb.profit.isEmpty, "Round cannot be over to warn")
+    val prizePool = roundDb.carryOver.getOrElse(Satoshis.zero) + amountPaid
+
+    val content =
+      s"""
+         |Round has 5 minutes left!
+         |
+         |Current prize pool: ${printAmount(prizePool)}
+         |
+         |Final chance!
+         |
+         |#[0]
+         |""".stripMargin.trim
+
+    val eTag = roundDb.noteId.map(n => Json.arr("e", n.hex))
+
+    val event = NostrEvent.build(
+      privateKey = nostrPrivateKey,
+      created_at = TimeUtil.currentEpochSecond,
+      kind = NostrKind.TextNote,
+      tags = eTag.toVector,
+      content = content
+    )
+
+    sendNostrEvents(Vector(event), config.nostrRelays).map(
+      _.headOption.map(NostrNoteId(_)))
+  }
+
   protected def announceWinner(
       roundDb: RoundDb,
       amountPaid: Satoshis): Future[Option[Sha256Digest]] = {

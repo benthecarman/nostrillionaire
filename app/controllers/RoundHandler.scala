@@ -29,9 +29,22 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
         current <- roundDAO.findCurrent()
         _ <- current match {
           case Some(round) =>
-            if (round.endDate < TimeUtil.currentEpochSecond) {
+            val now = TimeUtil.currentEpochSecond
+            if (round.endDate < now) {
               logger.info("Completing round")
               completeRound(round).flatMap(createNewRound)
+            } else if (round.endDate - 360 < now && !round.fiveMinWarning) {
+              for {
+                zaps <- zapDAO.findPaidByRound(round.id.get)
+
+                totalZapped = zaps.map(_.amount.toLong).sum
+                totalZappedSats = MilliSatoshis(totalZapped).toSatoshis
+                noteIdOpt <- fiveMinuteWarning(round, totalZappedSats)
+
+                _ <- roundDAO.update(
+                  round.copy(fiveMinWarning = noteIdOpt.isDefined))
+              } yield logger.info(
+                s"Sent 5 minute warning: ${noteIdOpt.getOrElse("None")}")
             } else {
               logger.debug("Round is still active")
               Future.unit
@@ -61,6 +74,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       endDate = end,
       carryOver = carryOver,
       noteId = None,
+      fiveMinWarning = false,
       numZaps = None,
       totalZapped = None,
       prize = None,
