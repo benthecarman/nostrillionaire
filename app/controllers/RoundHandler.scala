@@ -21,7 +21,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
   private val lnurlClient = new LnURLClient(None)
 
   final private val MIN = 1
-  final private val MAX = 100_000
+  final private val MAX = 10_000
 
   def startRoundScheduler(): Unit = {
     logger.info("Starting round scheduler")
@@ -51,7 +51,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
   private def createNewRound(): Future[RoundDb] = {
     val now = TimeUtil.currentEpochSecond
-    val end = now + 60 * 60 * 24 // 1 day
+    val end = now + (60 * 60) // 1 hour
 
     val number = MIN + random.nextLong((MAX - MIN) + 1)
 

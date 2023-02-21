@@ -27,7 +27,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
       displayName = Some("Nostrillionaire"),
       name = Some("nostrillionaire"),
       about = Some(
-        "Guess today's random number and win a prize!\nParticipate by zapping your guess.\nIf you win, you'll win everyone's zaps!"),
+        "Guess random number and win a prize, a new round every hour!\nParticipate by zapping your guess.\nIf you win, you'll win everyone's zaps!"),
       nip05 = Some("_@nostrillionaire.com"),
       lud16 = Some("me@nostrillionaire.com"),
       website = Some(new URL("https://nostrillionaire.com")),
@@ -37,7 +37,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
 
     val event = NostrEvent.build(
       privateKey = nostrPrivateKey,
-      created_at = 1676765686L, // change me when updates are made
+      created_at = 1676969598L, // change me when updates are made
       tags = Vector.empty,
       metadata = metadata)
 
@@ -74,12 +74,16 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
       max: Satoshis): Future[Option[Sha256Digest]] = {
     val content =
       s"""
-         |Guess today's random number and win a prize!
+         |A new round has started!
+         |
+         |Guess the random number and win a prize!
          |
          |Zap this note between ${printAmount(min)} and ${printAmount(
           max)} with your guess for a chance to win!
          |
          |The closest guess without going over wins!
+         |
+         |Ends in 1 hour.
          |""".stripMargin.trim
 
     val event = NostrEvent.build(
@@ -101,8 +105,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
 
     val content =
       s"""
-         |The winning number for today was ${intFormatter.format(
-          roundDb.number)}!
+         |The winning number was ${intFormatter.format(roundDb.number)}!
          |
          |#[0] has won ${printAmount(
           roundDb.prize.get)} with a guess of ${intFormatter.format(
@@ -127,8 +130,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
     require(roundDb.profit.isDefined, "Round must have a completed to announce")
     val content =
       s"""
-         |The winning number for today was ${intFormatter.format(
-          roundDb.number)}!
+         |The winning number was ${intFormatter.format(roundDb.number)}!
          |
          |Unfortunately, everyone lost their zaps.
          |
