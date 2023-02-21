@@ -12,7 +12,8 @@ import com.bot4s.telegram.models.{BotCommand, Message}
 import config.NostrillionaireAppConfig
 import models._
 import org.bitcoins.core.currency._
-import org.bitcoins.core.util.StartStopAsync
+import org.bitcoins.core.protocol.ln.LnInvoice
+import org.bitcoins.core.util.{StartStopAsync, TimeUtil}
 import org.scalastr.core.NostrPublicKey
 import slick.dbio.DBIOAction
 import sttp.capabilities.akka.AkkaStreams
@@ -22,6 +23,7 @@ import sttp.client3.akkahttp.AkkaHttpBackend
 import java.net.URLEncoder
 import java.text.NumberFormat
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 
 class TelegramHandler(controller: Controller)(implicit
     config: NostrillionaireAppConfig,
@@ -52,6 +54,8 @@ class TelegramHandler(controller: Controller)(implicit
       BotCommand("report", "Generate report of all events"),
       BotCommand("current", "Get info on the current round"),
       BotCommand("payouts", "Get info historical payouts"),
+      BotCommand("payout",
+                 "Do a manual payout for when fails, takes an id and invoice"),
       BotCommand("processunhandled", "Forces processing of invoices")
     )
 
@@ -95,6 +99,25 @@ class TelegramHandler(controller: Controller)(implicit
     if (checkAdminMessage(msg)) {
       getPayouts().flatMap { report =>
         reply(report).map(_ => ())
+      }
+    } else {
+      reply("You are not allowed to use this command!").map(_ => ())
+    }
+  }
+
+  onCommand("payout") { implicit msg =>
+    if (checkAdminMessage(msg)) {
+      val params = msg.text.get.trim.split(" ", 3)
+
+      val id = params(1).trim.toLong
+
+      params.lastOption
+        .flatMap(LnInvoice.fromStringOpt) match {
+        case Some(invoice) =>
+          manualPayout(id, invoice).flatMap { report =>
+            reply(report).map(_ => ())
+          }
+        case None => reply("You must provide an invoice!").map(_ => ())
       }
     } else {
       reply("You are not allowed to use this command!").map(_ => ())
@@ -243,6 +266,49 @@ class TelegramHandler(controller: Controller)(implicit
          |Total Amount: ${printAmount(total)}
          |Total Fees Paid: ${printAmount(feesPaid)}
          |""".stripMargin
+    }
+  }
+
+  private def manualPayout(id: Long, invoice: LnInvoice): Future[String] = {
+    val action = for {
+      round <- roundDAO.findByPrimaryKeyAction(id)
+      payout <- payoutDAO.findByPrimaryKeyAction(id)
+    } yield (round, payout)
+
+    roundDAO.safeDatabase.run(action).flatMap {
+      case (None, None) | (None, Some(_)) =>
+        Future.successful("Error: Round not found!")
+      case (Some(_), Some(_)) =>
+        Future.successful("Error: Round already paid out!")
+      case (Some(round), None) =>
+        if (round.winner.isEmpty) {
+          Future.successful("Error: Round has no winner!")
+        } else if (
+          !invoice.amount.map(_.toSatoshis).contains(round.prize.get)
+        ) {
+          Future.successful(
+            s"Error: Invoice amount does not prize ${round.prize.get}")
+        } else {
+          for {
+            payment <- controller.lnd.sendPayment(invoice, 20.seconds)
+
+            res <- {
+              if (payment.failureReason.isFailureReasonNone) {
+                val db = PayoutDb(
+                  round = id,
+                  invoice = invoice,
+                  amount = round.prize.get,
+                  fee = Satoshis(payment.feeSat),
+                  preimage = payment.paymentPreimage,
+                  date = TimeUtil.currentEpochSecond
+                )
+                payoutDAO.create(db).map(_ => "Success!")
+              } else
+                Future.successful(
+                  s"Error: Payment failed: ${payment.failureReason}")
+            }
+          } yield res
+        }
     }
   }
 
