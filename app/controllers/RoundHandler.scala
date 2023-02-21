@@ -60,6 +60,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       number = number,
       startDate = now,
       endDate = end,
+      noteId = None,
       numZaps = None,
       totalZapped = None,
       prize = None,
@@ -69,12 +70,14 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
     for {
       created <- roundDAO.create(round)
-      _ <- announceNewRound(Satoshis(MIN), Satoshis(MAX))
+      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX))
+      updated <- roundDAO.update(created.copy(noteId = noteId))
+
       _ <- telegramHandlerOpt
         .map(_.sendTelegramMessage(s"New round created!"))
         .getOrElse(Future.unit)
-      _ = logger.info(s"Created new round: $created")
-    } yield created
+      _ = logger.info(s"Created new round: $updated")
+    } yield updated
   }
 
   private def completeRound(): Future[Unit] = {

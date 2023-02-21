@@ -3,7 +3,7 @@ package models
 import config.NostrillionaireAppConfig
 import org.bitcoins.core.api.db.DbRowAutoInc
 import org.bitcoins.core.currency._
-import org.bitcoins.crypto.SchnorrPublicKey
+import org.bitcoins.crypto.{SchnorrPublicKey, Sha256Digest}
 import org.bitcoins.db.{CRUDAutoInc, DbCommonsColumnMappers}
 import slick.lifted.ProvenShape
 
@@ -14,6 +14,7 @@ case class RoundDb(
     number: Long,
     startDate: Long,
     endDate: Long,
+    noteId: Option[Sha256Digest],
     numZaps: Option[Int],
     totalZapped: Option[CurrencyUnit],
     prize: Option[CurrencyUnit],
@@ -82,6 +83,8 @@ case class RoundDAO()(implicit
 
     def endDate: Rep[Long] = column("end_date")
 
+    def noteId: Rep[Option[Sha256Digest]] = column("note_id")
+
     def numZaps: Rep[Option[Int]] = column("num_zaps")
 
     def totalZapped: Rep[Option[CurrencyUnit]] = column("total_zapped")
@@ -97,6 +100,7 @@ case class RoundDAO()(implicit
        number,
        startDate,
        endDate,
+       noteId,
        numZaps,
        totalZapped,
        prize,

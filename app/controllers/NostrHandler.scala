@@ -114,11 +114,13 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
          |Congratulations!
          |""".stripMargin.trim
 
+    val eTag = roundDb.noteId.map(n => Json.arr("e", n.hex))
+
     val event = NostrEvent.build(
       privateKey = nostrPrivateKey,
       created_at = TimeUtil.currentEpochSecond,
       kind = NostrKind.TextNote,
-      tags = Vector(Json.arr("p", winner.hex)),
+      tags = Vector(Json.arr("p", winner.hex)) ++ eTag,
       content = content
     )
 
@@ -137,11 +139,13 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
          |Better luck next time!
          |""".stripMargin.trim
 
+    val eTag = roundDb.noteId.map(n => Json.arr("e", n.hex))
+
     val event = NostrEvent.build(
       privateKey = nostrPrivateKey,
       created_at = TimeUtil.currentEpochSecond,
       kind = NostrKind.TextNote,
-      tags = Vector.empty,
+      tags = eTag.toVector,
       content = content
     )
 
