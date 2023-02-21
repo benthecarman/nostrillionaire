@@ -107,14 +107,18 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
       winnerOpt match {
         case Some(winner) =>
-          val prize = prizePool.satoshis.toLong * 0.9
-          val prizeSats = Satoshis(prize.toLong)
-          val profit = prizePool - prizeSats
+          val prize = {
+            if (numZaps > 1) {
+              val double = prizePool.satoshis.toLong * 0.9
+              Satoshis(double.toLong)
+            } else prizePool.satoshis
+          }
+          val profit = prizePool - prize
 
           val updatedRound = roundDb.copy(
             numZaps = Some(numZaps),
             totalZapped = Some(totalZappedSats),
-            prize = Some(prizeSats),
+            prize = Some(prize),
             profit = Some(profit),
             winner = Some(winner.payer)
           )
