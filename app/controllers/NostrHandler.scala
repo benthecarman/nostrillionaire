@@ -169,15 +169,18 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
       roundDb: RoundDb,
       carryOver: CurrencyUnit): Future[Option[Sha256Digest]] = {
     require(roundDb.profit.isDefined, "Round must have a completed to announce")
+
+    val carryOverStr =
+      if (carryOver > Satoshis.zero)
+        s"\nThe prize pool of ${printAmount(carryOver)} has been added to the next round!\n"
+      else ""
+
     val content =
       s"""
          |The winning number was ${intFormatter.format(roundDb.number)}!
          |
          |Unfortunately, no one guessed correctly.
-         |
-         |The prize pool of ${printAmount(
-          carryOver)} has been added to the next round!
-         |
+         |$carryOverStr
          |Better luck next time!
          |""".stripMargin.trim
 
