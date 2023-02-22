@@ -61,6 +61,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
   private def createNewRound(
       carryOver: Option[CurrencyUnit]): Future[RoundDb] = {
+    val carryOverOpt =
+      if (carryOver.exists(_ <= Satoshis.zero)) None
+      else carryOver
     logger.info("Creating new round")
     val now = TimeUtil.currentEpochSecond
     val end = now + (60 * 60) // 1 hour
@@ -72,7 +75,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       number = number,
       startDate = now,
       endDate = end,
-      carryOver = carryOver,
+      carryOver = carryOverOpt,
       noteId = None,
       fiveMinWarning = false,
       numZaps = None,
@@ -84,7 +87,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
     for {
       created <- roundDAO.create(round)
-      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX), carryOver)
+      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX), carryOverOpt)
       updated <- roundDAO.update(created.copy(noteId = noteId))
 
       _ <- telegramHandlerOpt
