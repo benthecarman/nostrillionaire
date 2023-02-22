@@ -110,7 +110,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
           val prize = {
             if (numZaps > 1) {
               val double = prizePool.satoshis.toLong * 0.9
-              Satoshis(double.toLong)
+              if (double < winner.amount.toSatoshis.toLong) {
+                prizePool.satoshis
+              } else Satoshis(double.toLong)
             } else prizePool.satoshis
           }
           val profit = prizePool - prize
