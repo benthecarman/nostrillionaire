@@ -239,6 +239,8 @@ class TelegramHandler(controller: Controller)(implicit
         val totalZapped = zaps.map(_.satoshis.asInstanceOf[CurrencyUnit]).sum
         val numZaps = zaps.size
 
+        val prizePool = round.carryOver.getOrElse(Satoshis.zero) + totalZapped
+
         val expectedWinner =
           RoundHandler.calculateWinner(zaps, round.number).map(_.payer)
 
@@ -251,6 +253,7 @@ class TelegramHandler(controller: Controller)(implicit
            |
            |Num Zaps: ${intFormatter.format(numZaps)}
            |Total Zapped: ${printAmount(totalZapped)}
+           |Prize Pool: ${printAmount(prizePool)}
            |""".stripMargin
     }
   }
