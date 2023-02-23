@@ -7,7 +7,8 @@ import org.bitcoins.core.protocol.ln.currency._
 import org.bitcoins.core.util.TimeUtil
 import org.bitcoins.lnurl.json.LnURLJsonModels._
 import org.bitcoins.lnurl.{LnURL, LnURLClient}
-import org.scalastr.core.NostrPublicKey
+import org.scalastr.core._
+import play.api.libs.json._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -201,21 +202,50 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
         warnPaymentFailure(roundDb, s"Could not find metadata for $winner")
       case Some(metadata) =>
         val urlOpt = metadata.lud06 match {
-          case Some(lnurl) => Some(LnURL.fromString(lnurl).url)
+          case Some(lnurl) =>
+            val url = LnURL.fromString(lnurl).url
+            Some((url, lnurl.toString))
           case None =>
             metadata.lud16 match {
-              case Some(lnAddr) => Some(LightningAddress(lnAddr).lnurlp)
-              case None         => None
+              case Some(lnAddr) =>
+                val url = LightningAddress(lnAddr).lnurlp
+                val lnurl = LnURL.fromURL(url.toString).toString
+                Some((url, lnurl))
+              case None => None
             }
         }
 
         urlOpt match {
-          case Some(url) =>
+          case Some((url, bech32)) =>
             lnurlClient.makeRequest(url).flatMap {
               case pay: LnURLPayResponse =>
                 val paymentAmount = roundDb.prize.get
+                val paymentMsats =
+                  MilliSatoshis.fromSatoshis(paymentAmount.satoshis)
+
+                val tags = Vector(
+                  Json.arr("p", winner.hex),
+                  Json.arr("amount", paymentMsats.toLong),
+                  Json.arr("lnurl", bech32)
+                )
+
+                val zapRequest = NostrEvent.build(
+                  nostrPrivateKey,
+                  TimeUtil.currentEpochSecond,
+                  NostrKind.ZapRequest,
+                  tags,
+                  "Winnings from Nostrillionaire!"
+                )
+
                 val f = for {
-                  invoice <- lnurlClient.getInvoice(pay, paymentAmount)
+                  invoice <- lnurlClient.getInvoice(
+                    pay = pay,
+                    amount = paymentAmount,
+                    extraParams =
+                      Map("nostr" -> Json.toJson(zapRequest).toString))
+
+                  // todo verify invoice description hash
+
                   payment <- lnd.sendPayment(invoice, 20.seconds)
 
                   payoutDbOpt <- {
