@@ -20,9 +20,6 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
   private val lnurlClient = new LnURLClient(None)
 
-  final private val MIN = 1
-  final private val MAX = 10_000
-
   def startRoundScheduler(): Unit = {
     logger.info("Starting round scheduler")
     val _ = system.scheduler.scheduleWithFixedDelay(5.seconds, 1.minute) { () =>
@@ -67,9 +64,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       else carryOver
     logger.info("Creating new round")
     val now = TimeUtil.currentEpochSecond
-    val end = now + (60 * 60) // 1 hour
+    val end = now + config.roundTimeSecs
 
-    val number = MIN + random.nextLong((MAX - MIN) + 1)
+    val number = config.min + random.nextLong((config.max - config.min) + 1)
 
     val round = RoundDb(
       id = None,
@@ -79,6 +76,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       carryOver = carryOverOpt,
       noteId = None,
       fiveMinWarning = false,
+      completed = false,
       numZaps = None,
       totalZapped = None,
       prize = None,
@@ -88,7 +86,9 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 
     for {
       created <- roundDAO.create(round)
-      noteId <- announceNewRound(Satoshis(MIN), Satoshis(MAX), carryOverOpt)
+      noteId <- announceNewRound(min = Satoshis(config.min),
+                                 max = Satoshis(config.max),
+                                 carryOver = carryOverOpt)
       updated <- roundDAO.update(created.copy(noteId = noteId))
 
       _ <- telegramHandlerOpt
@@ -122,6 +122,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
           val profit = prizePool - prize
 
           val updatedRound = roundDb.copy(
+            completed = true,
             numZaps = Some(numZaps),
             totalZapped = Some(totalZappedSats),
             prize = Some(prize),
@@ -147,6 +148,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
           } yield None
         case None =>
           val updatedRound = roundDb.copy(
+            completed = true,
             numZaps = Some(numZaps),
             totalZapped = Some(totalZappedSats),
             prize = Some(Satoshis.zero),
@@ -204,7 +206,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
         val urlOpt = metadata.lud06 match {
           case Some(lnurl) =>
             val url = LnURL.fromString(lnurl).url
-            Some((url, lnurl.toString))
+            Some((url, lnurl))
           case None =>
             metadata.lud16 match {
               case Some(lnAddr) =>

@@ -107,7 +107,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
   protected def fiveMinuteWarning(
       roundDb: RoundDb,
       amountPaid: Satoshis): Future[Option[NostrNoteId]] = {
-    require(roundDb.profit.isEmpty, "Round cannot be over to warn")
+    require(!roundDb.completed, "Round cannot be over to warn")
     val prizePool = roundDb.carryOver.getOrElse(Satoshis.zero) + amountPaid
 
     val content =
@@ -168,7 +168,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
   protected def announceNoWinner(
       roundDb: RoundDb,
       carryOver: CurrencyUnit): Future[Option[Sha256Digest]] = {
-    require(roundDb.profit.isDefined, "Round must have a completed to announce")
+    require(roundDb.completed, "Round must have a completed to announce")
 
     val carryOverStr =
       if (carryOver > Satoshis.zero)

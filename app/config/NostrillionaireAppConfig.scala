@@ -148,6 +148,24 @@ case class NostrillionaireAppConfig(
     } else Vector.empty
   }
 
+  lazy val min: Int = {
+    if (config.hasPath(s"$moduleName.min")) {
+      config.getInt(s"$moduleName.min")
+    } else 1
+  }
+
+  lazy val max: Int = {
+    if (config.hasPath(s"$moduleName.max")) {
+      config.getInt(s"$moduleName.max")
+    } else 10_000
+  }
+
+  lazy val roundTimeSecs = {
+    if (config.hasPath(s"$moduleName.roundTimeSecs")) {
+      config.getInt(s"$moduleName.roundTimeSecs")
+    } else 60 * 60 // 1 hour
+  }
+
   def seedExists(): Boolean = {
     WalletStorage.seedExists(seedPath)
   }

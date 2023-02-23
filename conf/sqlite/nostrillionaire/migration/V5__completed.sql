@@ -1,0 +1,2 @@
+ALTER TABLE rounds
+    ADD COLUMN completed INTEGER NOT NULL DEFAULT 1;
