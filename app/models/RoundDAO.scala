@@ -17,6 +17,7 @@ case class RoundDb(
     carryOver: Option[CurrencyUnit],
     noteId: Option[Sha256Digest],
     fiveMinWarning: Boolean,
+    completed: Boolean,
     numZaps: Option[Int],
     totalZapped: Option[CurrencyUnit],
     prize: Option[CurrencyUnit],
@@ -46,7 +47,7 @@ case class RoundDAO()(implicit
                                       NoStream,
                                       Effect.Read] = {
     table
-      .filter(_.profit.isEmpty)
+      .filterNot(_.completed)
       .sortBy(_.endDate.desc)
       .result
       .map(_.headOption)
@@ -58,7 +59,7 @@ case class RoundDAO()(implicit
 
   def getCurrentRoundId(): Future[Long] = {
     val action = table
-      .filter(_.profit.isEmpty)
+      .filterNot(_.completed)
       .sortBy(_.endDate.desc)
       .map(_.id)
       .result
@@ -69,7 +70,7 @@ case class RoundDAO()(implicit
 
   def getCompleted(): Future[Seq[RoundDb]] = {
     val action = table
-      .filter(_.profit.isDefined)
+      .filter(_.completed)
       .sortBy(_.endDate.desc)
       .result
 
@@ -91,6 +92,8 @@ case class RoundDAO()(implicit
 
     def fiveMinWarning: Rep[Boolean] = column("five_min_warning")
 
+    def completed: Rep[Boolean] = column("completed")
+
     def numZaps: Rep[Option[Int]] = column("num_zaps")
 
     def totalZapped: Rep[Option[CurrencyUnit]] = column("total_zapped")
@@ -109,6 +112,7 @@ case class RoundDAO()(implicit
        carryOver,
        noteId,
        fiveMinWarning,
+       completed,
        numZaps,
        totalZapped,
        prize,

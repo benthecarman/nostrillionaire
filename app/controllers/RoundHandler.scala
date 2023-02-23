@@ -76,6 +76,7 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
       carryOver = carryOverOpt,
       noteId = None,
       fiveMinWarning = false,
+      completed = false,
       numZaps = None,
       totalZapped = None,
       prize = None,

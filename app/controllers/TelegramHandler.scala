@@ -149,7 +149,7 @@ class TelegramHandler(controller: Controller)(implicit
   def notifyRoundComplete(
       roundDb: RoundDb,
       amountPaidOpt: Option[Satoshis]): Future[Unit] = {
-    require(roundDb.profit.isDefined, "Round is not complete!")
+    require(roundDb.completed, "Round is not complete!")
 
     val telegramMsg =
       s"""
