@@ -292,6 +292,6 @@ trait RoundHandler extends Logging { self: InvoiceMonitor =>
 object RoundHandler {
 
   def calculateWinner(zaps: Vector[ZapDb], number: Long): Option[ZapDb] = {
-    zaps.find(_.amount.toSatoshis.toLong == number)
+    zaps.sortBy(_.date).find(_.amount.toSatoshis.toLong == number)
   }
 }
