@@ -16,7 +16,7 @@ import scala.concurrent.duration.DurationInt
 trait RoundHandler extends Logging { self: InvoiceMonitor =>
   import system.dispatcher
 
-  private val random = new scala.util.Random(TimeUtil.currentEpochSecond)
+  private val random = new scala.util.Random(TimeUtil.currentEpochMs)
 
   private val lnurlClient = new LnURLClient(None)
 
