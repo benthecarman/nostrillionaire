@@ -88,9 +88,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
          |Zap this note between ${printAmount(min)} and ${printAmount(
           max)} with your guess for a chance to win!
          |
-         |The closest guess without going over wins!
          |$carryOverStr
-         |Ends in 1 hour.
          |""".stripMargin.trim
 
     val event = NostrEvent.build(
@@ -146,8 +144,7 @@ trait NostrHandler extends Logging { self: InvoiceMonitor =>
          |The winning number was ${intFormatter.format(roundDb.number)}!
          |
          |#[0] has won ${printAmount(
-          roundDb.prize.get)} with a guess of ${intFormatter.format(
-          amountPaid.toLong)}!
+          roundDb.prize.get)}!!!
          |
          |Congratulations!
          |""".stripMargin.trim
