@@ -152,13 +152,14 @@ class TelegramHandler(controller: Controller)(implicit
     require(roundDb.completed, "Round is not complete!")
 
     val telegramMsg =
+    if (amountPaidOpt.isDefined) {
+      require(roundDb.winner.isDefined, "Round has no winner!")
+      val winner = roundDb.winner.map(NostrPublicKey(_).toString).get
       s"""
          |🔔 🔔 Round Completed! 🔔 🔔
          |
          |Winning Number: ${intFormatter.format(roundDb.number)}
-         |Winner: ${roundDb.winner
-          .map(NostrPublicKey(_).toString)
-          .getOrElse("None")}
+         |Winner: $winner
          |Guess: ${amountPaidOpt.map(printAmount).getOrElse("None")}
          |
          |Prize: ${printAmount(roundDb.prize.get)}
@@ -166,6 +167,16 @@ class TelegramHandler(controller: Controller)(implicit
          |Total Zapped: ${printAmount(roundDb.totalZapped.get)}
          |Profit: ${printAmount(roundDb.profit.get)}
          |""".stripMargin
+    } else {
+      val prizePool = roundDb.carryOver.getOrElse(Satoshis.zero) + roundDb.totalZapped.get
+      s"""
+         |🔔 🔔 Round Completed! 🔔 🔔
+         |
+         |Number: ${intFormatter.format(roundDb.number)}
+         |
+         |Prize Pool: ${printAmount(prizePool)}
+         |""".stripMargin
+    }
 
     sendTelegramMessage(telegramMsg, myTelegramId)
   }
